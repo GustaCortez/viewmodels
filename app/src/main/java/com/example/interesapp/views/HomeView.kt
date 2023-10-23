@@ -20,11 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import com.example.interesapp.components.Alert
 import com.example.interesapp.components.MainButton
 import com.example.interesapp.components.MainTextField
 import com.example.interesapp.components.ShowInfoCards
 import com.example.interesapp.components.SpaceH
+import com.example.interesapp.viewmodels.PrestamoViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -33,17 +35,18 @@ import java.math.RoundingMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeView(){
+fun HomeView(viewModel: PrestamoViewModel){
     Scaffold (topBar = { CenterAlignedTopAppBar(title = { Text(text = "Calculadora Prestamos", color = Color.White)},
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary))})
     {
-        ContentHomeView(it)
+        ContentHomeView(it, viewModel)
     }
 
 }
 
 @Composable
-fun ContentHomeView(paddingValues: PaddingValues) {
+fun ContentHomeView(paddingValues: PaddingValues, viewModel: PrestamoViewModel) {
+
     Column (
         modifier = Modifier
             .padding(paddingValues)
@@ -64,40 +67,32 @@ fun ContentHomeView(paddingValues: PaddingValues) {
         //esta variable sera usada para mostrar un mensaje de alerta
         var showAlert by remember { mutableStateOf( false) }
         //invocamos la funcion para incluir las card con la informacion
+        val state = viewModel.state
         ShowInfoCards(
             titleInteres = "Total:",
-            montoInteres = montoInteres,
+            montoInteres = state.montoInteres,
             titleMonto = "Cuota:",
-            monto = montoCuota
+            monto =state.montoCuota
         )
 
-        MainTextField(value = montoPrestamo, onValueChange= {montoPrestamo= it} , label = "Prestamo")
+        MainTextField(value = state.montoPrestamo, onValueChange= {viewModel.onValue(value = it, campo = montoPrestamo)}, label = "Prestamo")
         SpaceH()
-        MainTextField(value = cantCuotas, onValueChange ={cantCuotas = it} , label ="Cuotas" )
+        MainTextField(value = state.cantCuotas, onValueChange ={viewModel.onValue(value = it, campo = "cuotas")} , label ="Cuotas" )
         SpaceH(10.dp)
-        MainTextField(value = tasa, onValueChange ={tasa =it} , label ="Tasa" )
+        MainTextField(value = state.tasa, onValueChange ={viewModel.onValue(value =it, campo = "tasa")} , label ="Tasa" )
         SpaceH(10.dp)
         MainButton(text = "Calcular") {
-            if (montoPrestamo !=""&& cantCuotas!=""){
-                montoInteres = calcularTotal(montoPrestamo.toDouble(),cantCuotas.toInt(), tasa.toDouble())
-
-                montoCuota = calcularCuota(montoPrestamo.toDouble(),cantCuotas.toInt(), tasa.toDouble())
-            }else{
-                showAlert=true
-            }
+            viewModel.calcular()
             
         }
         SpaceH()
 
         MainButton(text = "Limpiar",color = Color.Red) {
-            montoPrestamo=""
-            cantCuotas = ""
-            tasa= ""
-            montoInteres=0.0
-            montoCuota=0.0
+           viewModel.limpiar()
     }
-if (showAlert){
-    Alert(title = "Alerta", message ="Ingresa los datos" , confirmText ="Aceptar" , onConfirmClick = {showAlert=false  }) {
+if (viewModel.state.showAlert){
+    Alert(title = "Alerta", message ="Ingresa los datos" , confirmText ="Aceptar" ,
+        onConfirmClick = {viewModel.confirmaDialog() }) {
         
     }
 }
@@ -107,15 +102,15 @@ if (showAlert){
 
 }
 
-
-
-
-
 fun calcularTotal(montoPrestamo:Double,cantCuotas: Int, tasaInteresAnual: Double): Double {
     val res = cantCuotas *calcularCuota(montoPrestamo, cantCuotas,tasaInteresAnual)
     return BigDecimal(res).setScale(2, RoundingMode.HALF_UP).toDouble()
 
 }
+
+
+
+
 
 fun calcularCuota(montoPrestamo: Double, cantCuotas: Int, tasaInteresAnual: Double): Double {
 
